@@ -1,0 +1,35 @@
+# Demo Patch 4 — Trivy: HIGH/CRITICAL Filesystem CVE
+
+## What it demonstrates
+Trivy scans the repository filesystem and detects a package version with
+a known HIGH or CRITICAL CVE. The gate blocks the deploy stage.
+
+## Trigger
+Downgrade a dependency to a version with known CVEs, or add a package
+with a published HIGH/CRITICAL vulnerability.
+
+Example: use `requests==2.19.0` (has multiple HIGH CVEs).
+
+--- a/app/requirements.txt
++++ b/app/requirements.txt
+@@ -1,2 +1,3 @@
+ Flask==3.1.3
+ gunicorn==22.0.0
++requests==2.19.0
+
+## Expected gate output
+app/requirements.txt (pip)
+===========================
+Total: 2 (HIGH: 1, CRITICAL: 1)
+
+┌──────────┬────────────────┬──────────┬───────────────┬───────────────┐
+│ Library  │ Vulnerability  │ Severity │ Installed Ver │ Fixed Version │
+├──────────┼────────────────┼──────────┼───────────────┼───────────────┤
+│ requests │ CVE-2023-XXXXX │ HIGH     │ 2.19.0        │ 2.31.0        │
+│ urllib3  │ CVE-2023-YYYYY │ CRITICAL │ 1.23          │ 1.26.18       │
+└──────────┴────────────────┴──────────┴───────────────┴───────────────┘
+
+Error: Process completed with exit code 1.
+
+## Fix
+Upgrade requests to the fixed version. Verify no breaking changes.

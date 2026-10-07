@@ -1,0 +1,45 @@
+# Demo Patch 1 — Bandit: Shell Injection (High severity)
+#
+# What it demonstrates:
+# Bandit (SAST) detects an insecure subprocess call with shell=True,
+# classified as High severity (B602/B605). The gate blocks the merge.
+#
+# How to apply:
+# Add the lines marked with "+" to app/main.py
+
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,3 +1,8 @@
++import subprocess
++
++from flask import Flask, jsonify, request
+-from flask import Flask, jsonify
++from flask import Flask, jsonify, request
+
+ app = Flask(__name__)
+
+@@ -12,3 +17,10 @@
+     return jsonify(
+         service="security-gated-pipeline",
+         version="1.0.0"
+     ), 200
++
++
++@app.route("/run")
++def run_command():
++    cmd = request.args.get("cmd", "ls")
++    result = subprocess.call(cmd, shell=True)
++    return jsonify(result=result), 200
++
++
++if __name__ == "__main__":
++    app.run(host="0.0.0.0", port=5000, debug=True)
+
+# Expected gate output:
+#
+# >> Issue: [B602:subprocess_popen_with_shell_equals_true]
+#    Severity: High   Confidence: High
+#    CWE: CWE-78
+#    Location: app/main.py
+#
+# Error: Process completed with exit code 1.
