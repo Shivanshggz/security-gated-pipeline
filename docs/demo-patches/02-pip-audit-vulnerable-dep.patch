@@ -1,0 +1,25 @@
+# Demo Patch 2 — pip-audit: Vulnerable Dependency (CVE)
+
+## What it demonstrates
+pip-audit finds a known CVE in a pinned dependency version. The gate
+blocks the merge with exit code 1.
+
+## Trigger
+Downgrade Flask to a version with known CVEs.
+
+--- a/app/requirements.txt
++++ b/app/requirements.txt
+@@ -1,2 +1,2 @@
+-Flask==3.1.3
++Flask==3.0.3
+ gunicorn==22.0.0
+
+## Expected gate output
+Found 2 known vulnerabilities in 1 package
+Name    Version    ID                Fix Versions
+flask   3.0.3      PYSEC-2026-2151   3.1.3
+
+Error: Process completed with exit code 1.
+
+## Fix
+Upgrade to Flask==3.1.3 (or newer) to resolve the CVE.
