@@ -8,7 +8,7 @@ on:
 
 jobs:
   security-scans:
-    name: Tests + Bandit SAST
+    name: Tests + Bandit SAST + pip-audit
     runs-on: ubuntu-latest
 
     steps:
@@ -24,10 +24,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r app/requirements.txt
-          python -m pip install pytest bandit
+          python -m pip install pytest bandit pip-audit
 
       - name: Run functional tests (PyTest)
         run: python -m pytest tests/ -v
 
       - name: Run Bandit SAST scan
         run: python -m bandit -c .bandit -r app/ -ll
+
+      - name: Run pip-audit (dependency CVEs)
+        run: python -m pip_audit -r app/requirements.txt
