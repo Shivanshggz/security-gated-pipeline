@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   security-scans:
     name: Tests + Bandit SAST + pip-audit
@@ -68,3 +73,67 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
           ignore-unfixed: true
+
+  file-security-issue:
+    name: File Security Issue on Failure
+    runs-on: ubuntu-latest
+    needs: [security-scans, gitleaks-scan, trivy-scan]
+    if: failure()
+    steps:
+      - name: Determine failing gate
+        id: detect
+        run: |
+          echo "Determining which gate failed..."
+          if [ "${{ needs.security-scans.result }}" == "failure" ]; then
+            echo "gate=security-scans" >> $GITHUB_OUTPUT
+            echo "labels=severity:medium,gate:bandit,gate:pip-audit,type:security" >> $GITHUB_OUTPUT
+            echo "title=Security gate failed: Tests, Bandit, or pip-audit" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.gitleaks-scan.result }}" == "failure" ]; then
+            echo "gate=gitleaks-scan" >> $GITHUB_OUTPUT
+            echo "labels=severity:critical,gate:gitleaks,type:security" >> $GITHUB_OUTPUT
+            echo "title=Security gate failed: Gitleaks detected secrets" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.trivy-scan.result }}" == "failure" ]; then
+            echo "gate=trivy-scan" >> $GITHUB_OUTPUT
+            echo "labels=severity:high,gate:trivy,type:security" >> $GITHUB_OUTPUT
+            echo "title=Security gate failed: Trivy detected HIGH/CRITICAL CVEs" >> $GITHUB_OUTPUT
+          else
+            echo "gate=unknown" >> $GITHUB_OUTPUT
+            echo "labels=type:security" >> $GITHUB_OUTPUT
+            echo "title=Security gate failed: Unknown job" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `${{ steps.detect.outputs.title }}`;
+            const labels = `${{ steps.detect.outputs.labels }}`.split(',').filter(Boolean);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const body = [
+              `## 🚨 Security Gate Failure`,
+              ``,
+              `**Failed gate:** \`${{ steps.detect.outputs.gate }}\``,
+              `**Triggered by:** ${{ github.event_name }} on \`${{ github.ref_name }}\``,
+              `**Commit:** ${{ github.sha }}`,
+              `**Workflow run:** [View details](${runUrl})`,
+              ``,
+              `### What to do`,
+              `1. Open the [workflow run](${runUrl}) and identify the exact finding.`,
+              `2. Fix the issue (upgrade dependency, remove secret, fix code pattern).`,
+              `3. Push the fix — the gate will re-run automatically.`,
+              `4. Once green, close this issue.`,
+              ``,
+              `---`,
+              `*Auto-filed by the Security-Gated Pipeline.*`,
+            ].join('\n');
+            
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels,
+            });
+            
+            console.log(`Created issue #${issue.data.number}: ${issue.data.html_url}`);
