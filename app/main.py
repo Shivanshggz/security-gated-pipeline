@@ -14,9 +14,5 @@ def index():
     """Root endpoint identifying the service."""
     return jsonify(
         service="security-gated-pipeline",
-        version="1.0.0"
+        version="1.1.0"     # ← changed from 1.0.0
     ), 200
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)

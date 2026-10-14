@@ -14,4 +14,4 @@ def test_index_endpoint():
     assert response.status_code == 200
     data = response.get_json()
     assert data["service"] == "security-gated-pipeline"
-    assert data["version"] == "1.0.0"
+    assert data["version"] == "1.1.0"
